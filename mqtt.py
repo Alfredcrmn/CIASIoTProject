@@ -12,6 +12,9 @@ GPIO.setup(11, GPIO.OUT)  # GPIO 11 conectado al LED verde
 # Configura el pin PWM para el servomotor
 GPIO.setup(18, GPIO.OUT)  # GPIO 18 para el servomotor
 
+# Configura el pin 7 (botón) como entrada con resistencia pull-up interna
+GPIO.setup(7, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # Pull-up para que el botón lea HIGH cuando no se presiona
+
 # Configura el PWM en GPIO 18 para controlar el servomotor
 pwm = GPIO.PWM(18, 50)  # Frecuencia de 50Hz, que es la típica para servos
 pwm.start(0)  # Inicializa el PWM con 0% de ciclo de trabajo
