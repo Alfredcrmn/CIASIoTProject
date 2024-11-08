@@ -34,13 +34,13 @@ def toggle_leds_and_servo():
         green_led.off()
         red_led.on()
         servo.min()  # Servo en 0 grados
-        publish_status(client, "El LED verde se apagó. Ahora se encendió el rojo.")
+        publish_status(client, "Acceso negado. El LED verde se apagó. Ahora se encendió el rojo.")
     else:
         # Cambiar a verde encendido y rojo apagado
         red_led.off()
         green_led.on()
         servo.max()  # Servo en 90 grados
-        publish_status(client, "El LED rojo se apagó. Ahora se encendió el verde.")
+        publish_status(client, "Acceso permitido. El LED rojo se apagó. Ahora se encendió el verde.")
     
     is_green_on = not is_green_on
 
