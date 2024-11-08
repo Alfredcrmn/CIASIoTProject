@@ -8,6 +8,10 @@ led_rojo = LED(15)   # LED rojo conectado a GPIO 15
 boton = Button(3)    # Botón conectado a GPIO 3
 servo = Servo(18)    # Servomotor conectado a GPIO 18
 
+# Estado inicial: LED rojo encendido
+led_rojo.on()
+led_verde.off()
+
 # Función de conexión MQTT
 def on_connect(client, userdata, flags, rc):
     print("Conectado con el código de resultado " + str(rc))
@@ -19,10 +23,12 @@ def on_message(client, userdata, msg):
     
     if "green_on" in payload_str:
         led_verde.on()  # Enciende el LED verde
+        led_rojo.off()  # Apaga el LED rojo
     elif "green_off" in payload_str:
         led_verde.off()  # Apaga el LED verde
     elif "red_on" in payload_str:
         led_rojo.on()  # Enciende el LED rojo
+        led_verde.off()  # Apaga el LED verde
     elif "red_off" in payload_str:
         led_rojo.off()  # Apaga el LED rojo
     elif "servo_move" in payload_str:  # Mueve el servomotor
@@ -34,12 +40,16 @@ def on_message(client, userdata, msg):
 def button_press_control(client):
     while True:
         if boton.is_pressed:  # Si el botón está presionado
-            print("Botón presionado, encendiendo LED verde.")
+            print("Botón presionado, apagando LED rojo y encendiendo LED verde.")
+            led_rojo.off()  # Apaga el LED rojo
             led_verde.on()  # Enciende el LED verde
+            servo.min()  # Mueve el servo a la posición mínima
             publish_status(client, "green_on")  # Publica el estado en MQTT
             sleep(1)
         else:
+            # Si el botón no está presionado, el LED verde está apagado y el rojo encendido
             led_verde.off()  # Apaga el LED verde
+            led_rojo.on()  # Enciende el LED rojo
             publish_status(client, "green_off")  # Publica el estado en MQTT
         sleep(0.1)
 
