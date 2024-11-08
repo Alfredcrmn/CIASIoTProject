@@ -2,73 +2,58 @@ import paho.mqtt.client as mqtt
 from gpiozero import LED, Button, Servo
 from time import sleep
 
-# Definir los pines y configurar los componentes
-led_verde = LED(14)  # LED verde conectado a GPIO 14
-led_rojo = LED(15)   # LED rojo conectado a GPIO 15
-boton = Button(3)    # Botón conectado a GPIO 3
-servo = Servo(18)    # Servomotor conectado a GPIO 18
+# Configuración de pines
+red_led = LED(15)      # LED rojo en GPIO 15
+green_led = LED(14)    # LED verde en GPIO 14
+button = Button(10)    # Botón en GPIO 10
+servo = Servo(18)      # Servomotor en GPIO 18
 
-# Estado inicial: LED rojo encendido
-led_rojo.on()
-led_verde.off()
-servo.min()  # Mueve el servo a la posición 0 grados
+# Estado inicial
+red_led.on()            # Enciende el LED rojo al inicio
+green_led.off()         # Asegura que el LED verde esté apagado
+servo.mid()             # Coloca el servomotor en posición media (0 grados)
+
+# Estado del sistema
+is_green_on = False     # Controla el estado del switch
 
 # Función de conexión MQTT
 def on_connect(client, userdata, flags, rc):
     print("Conectado con el código de resultado " + str(rc))
     client.subscribe("identificacion")  # Suscripción a un tema
 
-# Función que maneja los mensajes recibidos de MQTT
+# Función de mensaje MQTT
 def on_message(client, userdata, msg):
-    print(msg.topic + " " + str(msg.payload))
-    payload_str = msg.payload.decode('utf-8')
-    
-    # Acciones basadas en los comandos recibidos
-    if "green_on" in payload_str:
-        led_verde.on()  # Enciende el LED verde
-        led_rojo.off()  # Apaga el LED rojo
-        servo.mid()     # Mueve el servo a 90 grados
-    elif "green_off" in payload_str:
-        led_verde.off()  # Apaga el LED verde
-    elif "red_on" in payload_str:
-        led_rojo.on()   # Enciende el LED rojo
-        led_verde.off()  # Apaga el LED verde
-        servo.min()      # Mueve el servo a 0 grados
-    elif "servo_move" in payload_str:
-        servo.mid()     # Mueve el servo a 90 grados
-        sleep(1)
-        servo.min()     # Mueve el servo a 0 grados
+    print(msg.topic + " " + str(msg.payload.decode()))
 
-# Función para controlar el botón y las acciones correspondientes
-def button_press_control(client):
-    while True:
-        if boton.is_pressed:  # Si el botón está presionado (LOW)
-            print("Botón presionado, apagando LED rojo y encendiendo LED verde.")
-            led_rojo.off()  # Apaga el LED rojo
-            led_verde.on()  # Enciende el LED verde
-            servo.mid()     # Mueve el servo a 90 grados
-            publish_status(client, "green_on")  # Publica el estado en MQTT
-            sleep(0.5)      # Espera un poco para mantener el estado
-        else:
-            led_verde.off()  # Apaga el LED verde
-            led_rojo.on()    # Enciende el LED rojo
-            servo.min()      # Mueve el servo a 0 grados
-            publish_status(client, "red_on")  # Publica el estado en MQTT
-        sleep(0.1)  # Pausa pequeña para evitar lecturas rápidas
-
-# Función de publicación MQTT
-def publish_status(client, message):
-    client.publish("identificacion", message)
-
-# Llamada de conexión MQTT
+# Configuración de MQTT
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
-
 client.connect("test.mosquitto.org", 1883, 60)
-
-# Inicia el bucle MQTT en segundo plano
 client.loop_start()
 
-# Inicia el control del botón
-button_press_control(client)
+# Función para alternar LEDs y controlar el servo
+def toggle_leds_and_servo():
+    global is_green_on
+    if is_green_on:
+        red_led.on()               # Enciende el LED rojo
+        green_led.off()            # Apaga el LED verde
+        servo.mid()                # Devuelve el servo a 0 grados
+        client.publish("identificacion", "red_on")
+    else:
+        red_led.off()              # Apaga el LED rojo
+        green_led.on()             # Enciende el LED verde
+        servo.max()                # Mueve el servo a 90 grados
+        client.publish("identificacion", "green_on")
+    is_green_on = not is_green_on  # Cambia el estado del switch
+
+# Configura el botón para activar la función de toggle al hacer clic
+button.when_pressed = toggle_leds_and_servo
+
+# Mantén el programa en ejecución
+try:
+    while True:
+        sleep(0.1)  # Pausa breve para evitar uso excesivo de CPU
+except KeyboardInterrupt:
+    client.loop_stop()  # Detiene el loop de MQTT al salir
+    print("Programa terminado")
