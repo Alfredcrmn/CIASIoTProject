@@ -6,7 +6,7 @@ from mtcnn.mtcnn import MTCNN
 from matplotlib import pyplot as plt
 import database as db
 
-# CONFIG
+# CONFIG TEST
 path = "C:/Users/user/facial_recognition/"  # your path
 
 # Facial recognition functions
