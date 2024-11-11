@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
-import './App.css';
+// src/App.jsx
+import React from 'react';
+import './styles/App.css';
+import Home from './userHome';
 
 function App() {
-  const [step, setStep] = useState(0);
-  const [role, setRole] = useState(null);
-
   return (
-    <h1>
-      Hello, world!
-    </h1>
+    <div>
+      <Home />
+    </div>
   );
 }
 
