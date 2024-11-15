@@ -1,7 +1,7 @@
 import paho.mqtt.client as mqtt
 from gpiozero import LED, Button, Servo
 from time import sleep
-import MFRC522
+from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
 
 # Configuración de los pines
@@ -15,7 +15,7 @@ SS_PIN = 8           # Pin de chip select para RFID
 # Variables de estado
 is_green_on = False
 authorized_uid = [0x43, 0x39, 0x8F, 0xE2]  # UID autorizado
-rfid_reader = MFRC522.MFRC522(SS_PIN, RST_PIN)
+rfid_reader = SimpleMFRC522()  # Usa SimpleMFRC522 en lugar de MFRC522
 
 # Configuración inicial
 red_led.on()
