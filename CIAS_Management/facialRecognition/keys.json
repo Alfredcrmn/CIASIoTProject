@@ -1,6 +1,6 @@
 {
     "host": "localhost",
-    "user": "root",
-    "password": "",
-    "database": "agency"
+    "user": "equipo4-iot24",
+    "password": "123",
+    "database": "CIAS"
 }
