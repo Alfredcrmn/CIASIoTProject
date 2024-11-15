@@ -1,71 +1,103 @@
-// src/Home.jsx
-import React, { useState, useEffect, useRef } from 'react';
-import './styles/userHome.css';
+// src/UserHome.jsx
+import React, { useState } from "react";
+import "./styles/userHome.css";
 
-function userHome() {
-  const [step, setStep] = useState(0);
-  const [role, setRole] = useState(null);
+function UserHome() {
+  const [username, setUsername] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [message, setMessage] = useState("");
 
-  const videoRef = useRef(null);
-  const photoRef = useRef(null);
+  const handleFileChange = (event) => {
+    setSelectedFile(event.target.files[0]);
+  };
 
-  const [hasPhoto, setHasPhoto] = useState(false);
+  const handleRegister = async () => {
+    if (!username || !selectedFile) {
+      setMessage("Please enter a username and select a file.");
+      return;
+    }
 
-  const getVideo = () => {
-    navigator.mediaDevices
-      .getUserMedia({
-        video: { width: 1920, height: 1080 }
-      })
-      .then(stream => {
-        let video = videoRef.current;
-        video.srcObject = stream;
-        video.play();
-      })
-      .catch(err => {
-        console.error(err);
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("username", username);
+
+    try {
+      const response = await fetch("http://127.0.0.1:5000/register", {
+        method: "POST",
+        body: formData,
       });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setMessage(`Success: ${result.message}`);
+        console.log("Face registered successfully.");
+      } else {
+        setMessage(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+    }
   };
 
-  const takePhoto = () => {
-    const width = 414;
-    const height = width / (16 / 9);
+  const handleLogin = async () => {
+    if (!username || !selectedFile) {
+      setMessage("Please enter a username and select a file.");
+      return;
+    }
 
-    let video = videoRef.current;
-    let photo = photoRef.current;
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("username", username);
 
-    photo.width = width;
-    photo.height = height;
+    try {
+      const response = await fetch("http://127.0.0.1:5000/login", {
+        method: "POST",
+        body: formData,
+      });
 
-    let ctx = photo.getContext('2d');
-    ctx.drawImage(video, 0, 0, width, height);
-    setHasPhoto(true);
+      const result = await response.json();
+
+      if (response.ok) {
+        setMessage(`Success: ${result.message}`);
+        console.log("Login successful.");
+      } else {
+        setMessage(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      setMessage(`Error: ${error.message}`);
+    }
   };
-
-  const closePhoto = () => {
-    let photo = photoRef.current;
-    let ctx = photo.getContext('2d');
-
-    ctx.clearRect(0, 0, photo.width, photo.height);
-
-    setHasPhoto(false);
-  };
-
-  useEffect(() => {
-    getVideo();
-  }, [videoRef]);
 
   return (
-    <div className="App">
-      <div className="camera">
-        <video ref={videoRef}></video>
-        <button onClick={takePhoto}>REGISTER FACE!</button>
-      </div>
-      <div className={'result' + (hasPhoto ? 'hasPhoto' : '')}>
-        <canvas ref={photoRef}></canvas>
-        <button onClick={closePhoto}>CLOSE</button>
+    <div className="user-home">
+      <h1>Facial Recognition App</h1>
+      <div className="form">
+        <label htmlFor="username">Username:</label>
+        <input
+          type="text"
+          id="username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+
+        <label htmlFor="file">Upload an Image:</label>
+        <input
+          type="file"
+          id="file"
+          accept="image/*"
+          onChange={handleFileChange}
+        />
+
+        <div className="buttons">
+          <button onClick={handleRegister}>Register Face</button>
+          <button onClick={handleLogin}>Login</button>
+        </div>
+
+        {message && <p className="message">{message}</p>}
       </div>
     </div>
   );
 }
 
-export default userHome;
+export default UserHome;
