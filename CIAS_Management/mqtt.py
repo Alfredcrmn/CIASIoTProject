@@ -3,11 +3,15 @@ from gpiozero import LED, Servo
 from mfrc522 import SimpleMFRC522
 from time import sleep
 import RPi.GPIO as GPIO
+from gpiozero.pins.pigpio import PiGPIOFactory
+from gpiozero import Servo
 #hmm
 # Configuración de los pines
 green_led = LED(14)  # LED verde
 red_led = LED(15)    # LED rojo
-servo = Servo(18)    # Servo motor
+
+factory = PiGPIOFactory()
+servo = Servo(18, pin_factory=factory)
 rfid_reader = SimpleMFRC522()  # Inicialización del lector RFID
 
 # Variables de estado
