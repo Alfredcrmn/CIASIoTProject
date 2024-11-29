@@ -1,107 +1,81 @@
 import paho.mqtt.client as mqtt
-from gpiozero import LED, Button, Servo
-from time import sleep
+from gpiozero import LED, Servo
 from mfrc522 import SimpleMFRC522
+from time import sleep
 import RPi.GPIO as GPIO
-
+#hmm
 # Configuración de los pines
 green_led = LED(14)  # LED verde
 red_led = LED(15)    # LED rojo
-button = Button(10)  # Botón para enviar mensaje manual
 servo = Servo(18)    # Servo motor
-RST_PIN = 22         # Pin de reset para RFID
-SS_PIN = 8           # Pin de chip select para RFID
+rfid_reader = SimpleMFRC522()  # Inicialización del lector RFID
 
 # Variables de estado
-is_green_on = False
-authorized_uid = [0x43, 0x39, 0x8F, 0xE2]  # UID autorizado
-rfid_reader = SimpleMFRC522()  # Usa SimpleMFRC522 en lugar de MFRC522
+authorized_uid = [0x43, 0x39, 0x8F, 0xE2]  # UID autorizado en formato hexadecimal
 
 # Configuración inicial
 red_led.on()
 green_led.off()
-servo.mid()  # Posición inicial del servomotor
-
-# Configuración de MQTT
-client = mqtt.Client()
-
-def on_connect(client, userdata, flags, rc):
-    client.subscribe("identificacion")
-
-def publish_status(client, message):
-    client.publish("identificacion", message)
-
-def check_uid(uid):
-    """
-    Verifica si el UID leído coincide con el autorizado
-    """
-    return uid == authorized_uid
-
-def toggle_leds_and_servo():
-    global is_green_on
-
-    if is_green_on:
-        # Acceso denegado: LED verde apagado, LED rojo encendido y servo en 0 grados
-        green_led.off()
-        red_led.on()
-        servo.min()  # Servo en 0 grados
-        publish_status(client, "Acceso denegado. El LED verde se apagó. Ahora se encendió el rojo.")
-    else:
-        # Acceso permitido: LED rojo apagado, LED verde encendido y servo en 90 grados
-        red_led.off()
-        green_led.on()
-        servo.max()  # Servo en 90 grados
-        publish_status(client, "Acceso permitido. El LED rojo se apagó. Ahora se encendió el verde.")
-    
-    is_green_on = not is_green_on
-
-def read_rfid():
-    """
-    Lee el RFID y verifica si es autorizado
-    """
-    (status, tag_type) = rfid_reader.Request()
-    if status != rfid_reader.MI_OK:
-        return None
-
-    (status, uid) = rfid_reader.Anticoll()
-    if status != rfid_reader.MI_OK:
-        return None
-
-    # Verifica si el UID es autorizado
-    if check_uid(uid):
-        return True
-    else:
-        return False
+servo.min()  # Posición inicial del servomotor (0 grados)
 
 # Configuración del cliente MQTT
-client.on_connect = on_connect
+client = mqtt.Client()
 client.connect("test.mosquitto.org", 1883, 60)
 
 # Inicia el loop MQTT en segundo plano
 client.loop_start()
 
-# Vincula el botón a la función de cambio de estado
-button.when_pressed = toggle_leds_and_servo
+# Función para enviar notificaciones MQTT
+def publish_status(client, message):
+    client.publish("acceso/estado", message)
 
-# Mantiene el programa en ejecución
+# Verifica si un UID es autorizado
+def check_uid(uid):
+    return uid == authorized_uid
+
+# Cambia el estado de los LEDs y el servomotor
+def toggle_leds_and_servo(access_granted):
+    if access_granted:
+        # Acceso permitido
+        red_led.off()
+        green_led.on()
+        servo.max()  # Servo en 90 grados
+        publish_status(client, "Acceso permitido. LED verde encendido. Servo en 90 grados.")
+        sleep(3)  # Espera antes de volver a la posición inicial
+        servo.min()  # Servo vuelve a 0 grados
+        publish_status(client, "Servo volvió a 0 grados. LED verde apagado.")
+        green_led.off()
+    else:
+        # Acceso denegado
+        green_led.off()
+        red_led.on()
+        servo.min()  # Servo permanece en 0 grados
+        publish_status(client, "Acceso denegado. LED rojo encendido. Servo en 0 grados.")
+
+# Lee la tarjeta RFID
+def read_rfid():
+    try:
+        id, text = rfid_reader.read()
+        publish_status(client, f"Intento de acceso con tarjeta UID: {id}.")
+        # Verifica si el UID es autorizado
+        if id == int(''.join(format(x, '02x') for x in authorized_uid), 16):
+            return True
+        else:
+            return False
+    except Exception as e:
+        publish_status(client, f"Error leyendo RFID: {str(e)}")
+        return False
+
+# Loop principal
 try:
     while True:
         # Revisión del RFID
         if read_rfid():
-            toggle_leds_and_servo()  # Acceso permitido, cambio de estado de LEDs y servo
-            publish_status(client, "Acceso concedido. El servo se movió a 90 grados.")
-            sleep(3)  # Tiempo de espera antes de volver a la posición inicial
-            servo.min()  # Regresa el servo a 0 grados
-            green_led.off()
-            red_led.on()
-            publish_status(client, "Acceso cerrado. El servo volvió a 0 grados.")
-        sleep(0.1)  # Pausa pequeña para evitar sobrecarga en el bucle principal
+            toggle_leds_and_servo(True)  # Acceso permitido
+        else:
+            toggle_leds_and_servo(False)  # Acceso denegado
+        sleep(1)  # Previene lecturas múltiples rápidas
 except KeyboardInterrupt:
-    pass
-finally:
-    client.loop_stop()
-    client.disconnect()
-    red_led.off()
-    green_led.off()
-    servo.detach()
+    # Limpia los recursos en caso de interrupción
     GPIO.cleanup()
+    publish_status(client, "Sistema detenido.")
